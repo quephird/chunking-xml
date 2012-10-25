@@ -16,6 +16,10 @@ import java.io.StringWriter;
 
 public class Main {
     private static int MAX_CHUNK_SIZE = 5;
+    private static String ROOT_TAG_NAME = "catalog";
+    private static String ENTITY_TAG_NAME = "book";
+    private static String SOURCE_XML_FILE_NAME = "src/books.xml";
+
     private static DocumentBuilder docBuilder = null;
     private static Transformer docTransformer = null;
 
@@ -23,26 +27,25 @@ public class Main {
             ParserConfigurationException, TransformerException {
 
         initializeBuilderAndTransformer();
-        Document sourceXml = docBuilder.parse(new File("src/books.xml"));
+        Document sourceXml = docBuilder.parse(new File(SOURCE_XML_FILE_NAME));
 
         int currentChunkSize = 0;
         Document targetXml = createNewChunk();
-        NodeList nodeList = sourceXml.getElementsByTagName("book");
+        NodeList nodeList = sourceXml.getElementsByTagName(ENTITY_TAG_NAME);
         for (int i = 0; i < nodeList.getLength(); i++) {
             Node node = nodeList.item(i);
 
             if (node.getNodeType() == Node.ELEMENT_NODE) {
-                if (currentChunkSize < MAX_CHUNK_SIZE) {
-                    addNodeToRoot(targetXml, node);
-                    currentChunkSize++;
-                } else {
+                if (currentChunkSize == MAX_CHUNK_SIZE) {
                     emitChunkedXml(targetXml);
                     targetXml = createNewChunk();
-                    addNodeToRoot(targetXml, node);
-                    currentChunkSize = 1;
+                    currentChunkSize = 0;
                 }
+                addNodeToRoot(targetXml, node);
+                currentChunkSize++;
             }
         }
+        // This is the last bit of untransmitted data.
         emitChunkedXml(targetXml);
     }
 
@@ -55,13 +58,13 @@ public class Main {
 
     private static Document createNewChunk() {
         Document chunkedXml = docBuilder.newDocument();
-        Element rootElement = chunkedXml.createElement("catalog");
+        Element rootElement = chunkedXml.createElement(ROOT_TAG_NAME);
         chunkedXml.appendChild(rootElement);
         return chunkedXml;
     }
 
     private static void addNodeToRoot(Document xml, Node node) {
-        Node rootElement = xml.getElementsByTagName("catalog").item(0);
+        Node rootElement = xml.getElementsByTagName(ROOT_TAG_NAME).item(0);
         rootElement.appendChild(xml.importNode(node, true));
     }
 
